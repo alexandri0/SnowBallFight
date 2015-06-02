@@ -2,9 +2,12 @@
 
 #pragma warning(disable: 4996)
 
+#define SPEED 1
+
 extern int mouse_x;
 extern int mouse_y;
 
+extern HANDLE  hSendMutex;
 
 typedef struct {									
 	BOOL keyDown[256];							//keyboard mas	
@@ -36,6 +39,7 @@ typedef struct {
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void TerminateApp(GL_Window *wnd);
+void ToggleFullscreen(GL_Window* window);
 void Update(float);
 BOOL Init(GL_Window*, Keys*);
 void fight(DWORD*);
@@ -43,3 +47,5 @@ BOOL ChangeResolution(int, int, int);
 void ReshapeGL(int width, int height);
 void DrawScene();
 void prefight(BOOL);
+void showMenu(RECT);
+void killFont();

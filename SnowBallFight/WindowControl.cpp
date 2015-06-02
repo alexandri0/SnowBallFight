@@ -1,8 +1,7 @@
-#include <Windows.h>
+#include <windows.h>
 #include <gl\GL.h>
 #include <gl\GLU.h>
 #include "WindowControl.h"
-#include <stdio.h>
 
 #define WM_TOGGLEFULLSCREEN (WM_USER+1)	
 
@@ -20,11 +19,13 @@ void TerminateApp(GL_Window* window)							// Terminate The Application
 
 BOOL Create_Window(GL_Window* window)									// This Code Creates Our OpenGL Window
 {
-	DWORD windowStyle = WS_OVERLAPPEDWINDOW;							// Define Our Window Style
+	DWORD windowStyle = WS_TILED | WS_SYSMENU;							// Define Our Window Style
 	DWORD windowExtendedStyle = WS_EX_APPWINDOW;						// Define The Window's Extended Style
-
+	GLuint PixelFormat;
+	RECT windowRect;
+	PIXELFORMATDESCRIPTOR pfd;
 	ShowCursor(FALSE);
-	PIXELFORMATDESCRIPTOR pfd =											// pfd Tells Windows How We Want Things To Be
+	pfd =											// pfd Tells Windows How We Want Things To Be
 	{
 		sizeof(PIXELFORMATDESCRIPTOR),									// Size Of This Pixel Format Descriptor
 		1,																// Version Number
@@ -46,9 +47,9 @@ BOOL Create_Window(GL_Window* window)									// This Code Creates Our OpenGL Wi
 		0, 0, 0															// Layer Masks Ignored
 	};
 
-	RECT windowRect = { 0, 0, window->init.width, window->init.height };	// Define Our Window Coordinates
+	windowRect = { 0, 0, window->init.width, window->init.height };	// Define Our Window Coordinates
 
-	GLuint PixelFormat;													// Will Hold The Selected Pixel Format
+													// Will Hold The Selected Pixel Format
 
 	if (window->init.isFullScreen == TRUE)								//fullscreen
 	{
@@ -68,9 +69,9 @@ BOOL Create_Window(GL_Window* window)									// This Code Creates Our OpenGL Wi
 	{
 		AdjustWindowRectEx(&windowRect, windowStyle, 0, windowExtendedStyle);
 	}
-	window->hWnd = CreateWindowEx(windowExtendedStyle,					
-		window->init.application->className,	
-		window->init.title,					
+	window->hWnd = CreateWindowEx(windowExtendedStyle, 
+		window->init.application->className,
+		window->init.title,
 		windowStyle,							
 		0, 0,								
 		windowRect.right - windowRect.left,	
@@ -170,6 +171,7 @@ BOOL Destroy_Window(GL_Window* window)								// Destroy The OpenGL Window & Rel
 	{
 		ChangeDisplaySettings(NULL, 0);									// Switch Back To Desktop Resolution
 	}
+	killFont();
 	ShowCursor(TRUE);
 	return TRUE;														// Return True
 }
@@ -219,6 +221,11 @@ BOOL RegisterWindowClass(Application* app)						//register window
 		return FALSE;
 	}
 	return TRUE;
+}
+
+void ToggleFullscreen(GL_Window* window)								// Toggle Fullscreen/Windowed
+{
+	PostMessage(window->hWnd, WM_TOGGLEFULLSCREEN, 0, 0);				// Send A WM_TOGGLEFULLSCREEN Message
 }
 
 #pragma endregion
@@ -326,10 +333,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 //prog entry
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-
-	const int TICKS_PER_SECOND = 200;
+	const int TICKS_PER_SECOND = 200/SPEED;
 	const int SKIP_TICKS = 1000 / TICKS_PER_SECOND;
-	const int MAX_FRAMESKIP = 3;
+	const int MAX_FRAMESKIP = 10;
 
 	int loops;
 
@@ -352,10 +358,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	ZeroMemory(&keys, sizeof(Keys));									
 
-	if (MessageBox(HWND_DESKTOP, "Would You Like To Run In Fullscreen Mode?", "Start FullScreen?", MB_YESNO | MB_ICONQUESTION) == IDYES)
-	{
-		window.init.isFullScreen = TRUE;		
-	}
+	window.init.isFullScreen = FALSE;		
 
 	if (RegisterWindowClass(&application) == FALSE)					
 	{
@@ -372,6 +375,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		{
 			if (Init(&window, &keys) == FALSE)					
 			{
+				MessageBox(HWND_DESKTOP, "Error in INIT", "Error", MB_OK | MB_ICONEXCLAMATION);
 				TerminateApp(&window);							
 			}
 			else														
@@ -408,13 +412,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 								next_game_tick += SKIP_TICKS;
 								loops++;
 							}
-						
+							ReleaseMutex(hSendMutex);
 							DrawScene();						
 						}
 //=============================================================================
 					}
 				}														
-			}															
+			}
+			
 			Destroy_Window(&window);									
 		}
 		else															
@@ -426,6 +431,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}																	
 
 	UnregisterClass(application.className, application.hInstance);
+	
 	return 0;
 }
 
